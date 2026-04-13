@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { Send, Bot, User as UserIcon, Settings, Play, Pause } from 'lucide-react';
+import { Send, Bot, User as UserIcon, Settings, Play, Pause, Menu } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { MembersPanel } from './MembersPanel';
 import { getChats, saveChats, getMessages, saveMessages, getMembers } from '../lib/localStore';
+import { useSidebar } from '../lib/SidebarContext';
 
 export function ChatView({ user }: { user: any }) {
   const { chatId } = useParams();
+  const { setIsOpen } = useSidebar();
   const [chat, setChat] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
@@ -15,6 +17,12 @@ export function ChatView({ user }: { user: any }) {
   const [isAutoChatting, setIsAutoChatting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isGeneratingRef = useRef(false);
+  const isAutoChattingRef = useRef(isAutoChatting);
+  const manualLoopIdRef = useRef(0);
+
+  useEffect(() => {
+    isAutoChattingRef.current = isAutoChatting;
+  }, [isAutoChatting]);
 
   const loadData = () => {
     if (!chatId) return;
@@ -169,7 +177,21 @@ export function ChatView({ user }: { user: any }) {
     if (!isAutoChatting) {
       const aiMembers = members.filter(m => m.memberType === 'ai');
       if (aiMembers.length > 0) {
-        generateForAI(aiMembers[0]);
+        const currentLoopId = ++manualLoopIdRef.current;
+        (async () => {
+          for (const ai of aiMembers) {
+            if (isAutoChattingRef.current || manualLoopIdRef.current !== currentLoopId) break;
+            
+            while (isGeneratingRef.current) {
+              await new Promise(resolve => setTimeout(resolve, 200));
+            }
+            
+            if (isAutoChattingRef.current || manualLoopIdRef.current !== currentLoopId) break;
+            
+            await generateForAI(ai);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        })();
       }
     }
   };
@@ -180,24 +202,29 @@ export function ChatView({ user }: { user: any }) {
     <div className="flex-1 flex h-full overflow-hidden">
       <div className="flex-1 flex flex-col min-w-0 bg-white">
         {/* Header */}
-        <header className="h-16 border-b border-gray-200 flex items-center justify-between px-6 bg-white shrink-0">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">{chat.name}</h2>
-            <p className="text-sm text-gray-500 truncate">{members.length} 名成员</p>
+        <header className="h-16 border-b border-gray-200 flex items-center justify-between px-4 md:px-6 bg-white shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={() => setIsOpen(true)} className="md:hidden p-2 -ml-2 text-gray-600">
+              <Menu className="w-6 h-6" />
+            </button>
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-gray-900 truncate">{chat.name}</h2>
+              <p className="text-sm text-gray-500 truncate">{members.length} 名成员</p>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
             <button
               onClick={() => setIsAutoChatting(!isAutoChatting)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-colors ${
                 isAutoChatting 
                   ? 'bg-green-100 text-green-700 hover:bg-green-200' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               {isAutoChatting ? (
-                <><Pause className="w-4 h-4" /> 暂停讨论</>
+                <><Pause className="w-4 h-4" /> <span className="hidden sm:inline">暂停讨论</span></>
               ) : (
-                <><Play className="w-4 h-4" /> 开启自动讨论</>
+                <><Play className="w-4 h-4" /> <span className="hidden sm:inline">开启自动讨论</span></>
               )}
             </button>
             <button
@@ -275,7 +302,15 @@ export function ChatView({ user }: { user: any }) {
 
       {/* Right Panel */}
       {showMembers && (
-        <MembersPanel chatId={chatId} members={members} chat={chat} />
+        <>
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setShowMembers(false)}
+          />
+          <div className="fixed inset-y-0 right-0 z-50 lg:relative lg:z-auto">
+            <MembersPanel chatId={chatId} members={members} chat={chat} onClose={() => setShowMembers(false)} />
+          </div>
+        </>
       )}
     </div>
   );

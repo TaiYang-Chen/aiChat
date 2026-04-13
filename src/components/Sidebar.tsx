@@ -4,7 +4,7 @@ import { Plus, MessageSquare } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { getChats, saveChats, saveMembers } from '../lib/localStore';
 
-export function Sidebar({ user }: { user: any }) {
+export function Sidebar({ user, onClose }: { user: any, onClose?: () => void }) {
   const [chats, setChats] = useState<any[]>([]);
   const navigate = useNavigate();
 
@@ -65,6 +65,7 @@ export function Sidebar({ user }: { user: any }) {
           <NavLink
             key={chat._id}
             to={`/chat/${chat._id}`}
+            onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
                 isActive ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-200'
