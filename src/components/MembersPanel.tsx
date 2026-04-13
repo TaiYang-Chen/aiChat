@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { collection, addDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
 import { Bot, User as UserIcon, Plus, X, Trash2 } from 'lucide-react';
-import { db } from '../lib/firebase';
 import { v4 as uuidv4 } from 'uuid';
+import { getMembers, saveMembers } from '../lib/localStore';
 
 const PROVIDERS = {
   google: {
@@ -28,39 +27,38 @@ export function MembersPanel({ chatId, members, chat }: { chatId: string, member
   const [aiApiKey, setAiApiKey] = useState('');
   const [aiPrompt, setAiPrompt] = useState('');
 
-  const handleAddAI = async () => {
+  const handleAddAI = () => {
     if (!aiName || !aiPrompt || !aiModel) return;
-    try {
-      await addDoc(collection(db, `chats/${chatId}/members`), {
-        id: uuidv4(),
-        chatId,
-        memberId: `ai-${uuidv4()}`,
-        memberType: 'ai',
-        role: 'member',
-        aiProvider,
-        aiModel,
-        aiBaseUrl,
-        aiApiKey,
-        aiPrompt,
-        name: aiName,
-        joinedAt: serverTimestamp()
-      });
-      setShowAddAI(false);
-      setAiName('');
-      setAiPrompt('');
-      setAiBaseUrl('');
-      setAiApiKey('');
-    } catch (error) {
-      console.error("Error adding AI:", error);
-    }
+    
+    const newMember = {
+      _id: uuidv4(),
+      id: uuidv4(),
+      chatId,
+      memberId: `ai-${uuidv4()}`,
+      memberType: 'ai',
+      role: 'member',
+      aiProvider,
+      aiModel,
+      aiBaseUrl,
+      aiApiKey,
+      aiPrompt,
+      name: aiName,
+      joinedAt: Date.now()
+    };
+    
+    const currentMembers = getMembers(chatId);
+    saveMembers(chatId, [...currentMembers, newMember]);
+    
+    setShowAddAI(false);
+    setAiName('');
+    setAiPrompt('');
+    setAiBaseUrl('');
+    setAiApiKey('');
   };
 
-  const handleRemoveMember = async (memberDocId: string) => {
-    try {
-      await deleteDoc(doc(db, `chats/${chatId}/members`, memberDocId));
-    } catch (error) {
-      console.error("Error removing member:", error);
-    }
+  const handleRemoveMember = (memberDocId: string) => {
+    const currentMembers = getMembers(chatId);
+    saveMembers(chatId, currentMembers.filter((m: any) => m._id !== memberDocId));
   };
 
   return (

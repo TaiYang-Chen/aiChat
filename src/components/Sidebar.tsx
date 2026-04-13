@@ -1,57 +1,51 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { User } from 'firebase/auth';
-import { collection, query, onSnapshot, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
-import { Plus, MessageSquare, LogOut } from 'lucide-react';
-import { db, logout } from '../lib/firebase';
+import { Plus, MessageSquare } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { getChats, saveChats, saveMembers } from '../lib/localStore';
 
-export function Sidebar({ user }: { user: User }) {
+export function Sidebar({ user }: { user: any }) {
   const [chats, setChats] = useState<any[]>([]);
   const navigate = useNavigate();
 
+  const loadChats = () => {
+    const loaded = getChats().sort((a: any, b: any) => b.updatedAt - a.updatedAt);
+    setChats(loaded);
+  };
+
   useEffect(() => {
-    const q = query(collection(db, 'chats'), orderBy('updatedAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const chatData = snapshot.docs.map(doc => ({
-        ...doc.data(),
-        _id: doc.id
-      }));
-      setChats(chatData);
-    });
-    return () => unsubscribe();
+    loadChats();
+    window.addEventListener('chats_updated', loadChats);
+    return () => window.removeEventListener('chats_updated', loadChats);
   }, []);
 
-  const createNewChat = async () => {
+  const createNewChat = () => {
     const chatId = uuidv4();
     const newChat = {
+      _id: chatId,
       id: chatId,
       name: '新群聊',
       description: '',
       ownerId: user.uid,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      createdAt: Date.now(),
+      updatedAt: Date.now()
     };
     
-    try {
-      // Create chat document
-      const chatRef = await addDoc(collection(db, 'chats'), newChat);
-      
-      // Add creator as member
-      await addDoc(collection(db, `chats/${chatRef.id}/members`), {
-        id: uuidv4(),
-        chatId: chatRef.id,
-        memberId: user.uid,
-        memberType: 'user',
-        role: 'admin',
-        name: user.displayName || 'User',
-        joinedAt: serverTimestamp()
-      });
+    const currentChats = getChats();
+    saveChats([...currentChats, newChat]);
+    
+    saveMembers(chatId, [{
+      _id: uuidv4(),
+      id: uuidv4(),
+      chatId: chatId,
+      memberId: user.uid,
+      memberType: 'user',
+      role: 'admin',
+      name: user.displayName || 'User',
+      joinedAt: Date.now()
+    }]);
 
-      navigate(`/chat/${chatRef.id}`);
-    } catch (error) {
-      console.error("Error creating chat:", error);
-    }
+    navigate(`/chat/${chatId}`);
   };
 
   return (

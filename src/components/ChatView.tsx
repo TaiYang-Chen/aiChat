@@ -1,13 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { User } from 'firebase/auth';
-import { collection, query, onSnapshot, orderBy, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { Send, Bot, User as UserIcon, Settings } from 'lucide-react';
-import { db } from '../lib/firebase';
 import { v4 as uuidv4 } from 'uuid';
 import { MembersPanel } from './MembersPanel';
+import { getChats, saveChats, getMessages, saveMessages, getMembers } from '../lib/localStore';
 
-export function ChatView({ user }: { user: User }) {
+export function ChatView({ user }: { user: any }) {
   const { chatId } = useParams();
   const [chat, setChat] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
@@ -16,30 +14,29 @@ export function ChatView({ user }: { user: User }) {
   const [showMembers, setShowMembers] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const loadData = () => {
     if (!chatId) return;
+    const allChats = getChats();
+    const currentChat = allChats.find((c: any) => c.id === chatId);
+    setChat(currentChat || null);
+    setMessages(getMessages(chatId));
+    setMembers(getMembers(chatId));
+  };
 
-    // Listen to chat details
-    const unsubscribeChat = onSnapshot(doc(db, 'chats', chatId), (doc) => {
-      setChat({ ...doc.data(), _id: doc.id });
-    });
-
-    // Listen to messages
-    const qMessages = query(collection(db, `chats/${chatId}/messages`), orderBy('createdAt', 'asc'));
-    const unsubscribeMessages = onSnapshot(qMessages, (snapshot) => {
-      setMessages(snapshot.docs.map(doc => ({ ...doc.data(), _id: doc.id })));
-    });
-
-    // Listen to members
-    const qMembers = query(collection(db, `chats/${chatId}/members`), orderBy('joinedAt', 'asc'));
-    const unsubscribeMembers = onSnapshot(qMembers, (snapshot) => {
-      setMembers(snapshot.docs.map(doc => ({ ...doc.data(), _id: doc.id })));
-    });
-
+  useEffect(() => {
+    loadData();
+    const handleMessages = (e: any) => { if (e.detail.chatId === chatId) loadData(); };
+    const handleMembers = (e: any) => { if (e.detail.chatId === chatId) loadData(); };
+    const handleChats = () => loadData();
+    
+    window.addEventListener('messages_updated', handleMessages);
+    window.addEventListener('members_updated', handleMembers);
+    window.addEventListener('chats_updated', handleChats);
+    
     return () => {
-      unsubscribeChat();
-      unsubscribeMessages();
-      unsubscribeMembers();
+      window.removeEventListener('messages_updated', handleMessages);
+      window.removeEventListener('members_updated', handleMembers);
+      window.removeEventListener('chats_updated', handleChats);
     };
   }, [chatId]);
 
@@ -56,75 +53,87 @@ export function ChatView({ user }: { user: User }) {
 
     const messageId = uuidv4();
     const newMessage = {
+      _id: messageId,
       id: messageId,
       chatId,
       senderId: user.uid,
       senderType: 'user',
       senderName: user.displayName || 'User',
       content: messageText,
-      createdAt: serverTimestamp(),
+      createdAt: Date.now(),
       status: 'sent'
     };
 
-    try {
-      await addDoc(collection(db, `chats/${chatId}/messages`), newMessage);
-      await updateDoc(doc(db, 'chats', chatId), { updatedAt: serverTimestamp() });
+    const currentMessages = getMessages(chatId);
+    saveMessages(chatId, [...currentMessages, newMessage]);
 
-      // Check if we need to trigger AI responses
-      const aiMembers = members.filter(m => m.memberType === 'ai');
-      
-      const contextMessages = messages.slice(-10).map(m => `${m.senderName}: ${m.content}`).join('\n');
-      
-      await Promise.all(aiMembers.map(async (ai) => {
-        // Create a "generating" placeholder message
-        const aiMessageId = uuidv4();
-        const aiMessageRef = await addDoc(collection(db, `chats/${chatId}/messages`), {
-          id: aiMessageId,
-          chatId,
-          senderId: ai.memberId,
-          senderType: 'ai',
-          senderName: ai.name,
-          content: '',
-          createdAt: serverTimestamp(),
-          status: 'generating'
-        });
-
-        const prompt = `Chat Context:\n${contextMessages}\nUser: ${messageText}\n\nRespond as ${ai.name}.`;
-        
-        try {
-          const res = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              provider: ai.aiProvider || 'google',
-              model: ai.aiModel || 'gemini-2.5-pro',
-              prompt: prompt,
-              systemInstruction: ai.aiPrompt,
-              baseUrl: ai.aiBaseUrl,
-              apiKey: ai.aiApiKey
-            })
-          });
-          
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Failed to generate');
-
-          // Update the AI message with the actual response
-          await updateDoc(aiMessageRef, {
-            content: data.text,
-            status: 'sent'
-          });
-        } catch (err: any) {
-          console.error("AI Generation Error:", err);
-          await updateDoc(aiMessageRef, {
-            content: `[Error: ${err.message}]`,
-            status: 'error'
-          });
-        }
-      }));
-
-    } catch (error) {
-      console.error("Error sending message:", error);
+    const allChats = getChats();
+    const chatIndex = allChats.findIndex((c: any) => c.id === chatId);
+    if (chatIndex > -1) {
+      allChats[chatIndex].updatedAt = Date.now();
+      saveChats(allChats);
     }
+
+    // Check if we need to trigger AI responses
+    const aiMembers = members.filter(m => m.memberType === 'ai');
+    const contextMessages = [...currentMessages, newMessage].slice(-10).map(m => `${m.senderName}: ${m.content}`).join('\n');
+    
+    await Promise.all(aiMembers.map(async (ai) => {
+      // Create a "generating" placeholder message
+      const aiMessageId = uuidv4();
+      const aiMessage = {
+        _id: aiMessageId,
+        id: aiMessageId,
+        chatId,
+        senderId: ai.memberId,
+        senderType: 'ai',
+        senderName: ai.name,
+        content: '',
+        createdAt: Date.now(),
+        status: 'generating'
+      };
+
+      let latestMessages = getMessages(chatId);
+      saveMessages(chatId, [...latestMessages, aiMessage]);
+
+      const prompt = `Chat Context:\n${contextMessages}\nUser: ${messageText}\n\nRespond as ${ai.name}.`;
+      
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: ai.aiProvider || 'google',
+            model: ai.aiModel || 'gemini-2.5-pro',
+            prompt: prompt,
+            systemInstruction: ai.aiPrompt,
+            baseUrl: ai.aiBaseUrl,
+            apiKey: ai.aiApiKey
+          })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to generate');
+
+        // Update the AI message with the actual response
+        latestMessages = getMessages(chatId);
+        const msgIndex = latestMessages.findIndex((m: any) => m.id === aiMessageId);
+        if (msgIndex > -1) {
+          latestMessages[msgIndex].content = data.text;
+          latestMessages[msgIndex].status = 'sent';
+          saveMessages(chatId, latestMessages);
+        }
+      } catch (err: any) {
+        console.error("AI Generation Error:", err);
+        latestMessages = getMessages(chatId);
+        const msgIndex = latestMessages.findIndex((m: any) => m.id === aiMessageId);
+        if (msgIndex > -1) {
+          latestMessages[msgIndex].content = `[Error: ${err.message}]`;
+          latestMessages[msgIndex].status = 'error';
+          saveMessages(chatId, latestMessages);
+        }
+      }
+    }));
   };
 
   if (!chat) return <div className="flex-1 flex items-center justify-center">加载中...</div>;
