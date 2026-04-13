@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the platform",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "timestamp" }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "Chat": {
+      "title": "Chat",
+      "description": "A group chat session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      },
+      "required": ["id", "name", "ownerId", "createdAt", "updatedAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A message within a chat",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "chatId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderType": { "type": "string", "enum": ["user", "ai"] },
+        "senderName": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "timestamp" },
+        "status": { "type": "string", "enum": ["sending", "sent", "error", "generating"] }
+      },
+      "required": ["id", "chatId", "senderId", "senderType", "content", "createdAt"]
+    },
+    "ChatMember": {
+      "title": "ChatMember",
+      "description": "A member (user or AI) of a chat",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "chatId": { "type": "string" },
+        "memberId": { "type": "string" },
+        "memberType": { "type": "string", "enum": ["user", "ai"] },
+        "role": { "type": "string", "enum": ["admin", "member"] },
+        "aiType": { "type": "string", "enum": ["gpt", "image", "data", "none"] },
+        "aiProvider": { "type": "string" },
+        "aiModel": { "type": "string" },
+        "aiBaseUrl": { "type": "string" },
+        "aiApiKey": { "type": "string" },
+        "aiPrompt": { "type": "string" },
+        "name": { "type": "string" },
+        "joinedAt": { "type": "timestamp" }
+      },
+      "required": ["id", "chatId", "memberId", "memberType", "role", "joinedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "/chats/{chatId}": {
+      "schema": { "$ref": "#/entities/Chat" },
+      "description": "Group chats"
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Messages in a chat"
+    },
+    "/chats/{chatId}/members/{memberId}": {
+      "schema": { "$ref": "#/entities/ChatMember" },
+      "description": "Members of a chat"
+    }
+  }
+}
