@@ -44,3 +44,12 @@ export const saveMembers = (chatId: string, members: any[]) => {
   localStorage.setItem(`members_${chatId}`, JSON.stringify(members));
   window.dispatchEvent(new CustomEvent('members_updated', { detail: { chatId } }));
 };
+
+export const deleteChat = (chatId: string) => {
+  const chats = getChats();
+  const newChats = chats.filter((c: any) => c.id !== chatId);
+  localStorage.setItem('chats', JSON.stringify(newChats));
+  localStorage.removeItem(`messages_${chatId}`);
+  localStorage.removeItem(`members_${chatId}`);
+  window.dispatchEvent(new Event('chats_updated'));
+};

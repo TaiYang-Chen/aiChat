@@ -99,25 +99,25 @@ export function ChatView({ user }: { user: any }) {
     if (lastUserMsg) {
       const content = lastUserMsg.content;
       if (content.includes('@图片')) {
-        systemAddon += '\n【系统强制指令】用户请求生成图片。你必须返回一段Markdown格式的图片代码，格式严格如下：\n![图片描述](https://image.pollinations.ai/prompt/英文提示词?width=800&height=600&nologo=true)\n请将"英文提示词"替换为详细的英文画面描述（单词间用%20连接）。必须包含完整的URL前缀和括号！';
+        systemAddon += '\n\n【非常重要：图片生成指令】\n用户请求了生成图片。你**必须**使用 Markdown 的图片语法来回复，绝对不能只输出提示词文字！\n格式必须严格如下：\n`![图片描述](https://image.pollinations.ai/prompt/你的英文提示词?width=800&height=600&nologo=true)`\n例如：`![一只可爱的猫](https://image.pollinations.ai/prompt/a%20cute%20cat?width=800&height=600&nologo=true)`\n请务必确保包含 `![]()` 这些符号，并将提示词用 %20 拼接！\n注意：请直接输出这行 Markdown 代码，**绝对不要**把它包裹在 ``` 代码块中！';
       }
       if (content.includes('@图标')) {
-        systemAddon += '\n【系统强制指令】用户请求生成图标。你必须返回一段Markdown格式的图片代码，格式严格如下：\n![图标描述](https://image.pollinations.ai/prompt/flat%20vector%20app%20icon%20design%20of%20英文提示词?width=512&height=512&nologo=true)\n请将"英文提示词"替换为具体的英文描述（单词间用%20连接）。必须包含完整的URL前缀和括号！';
+        systemAddon += '\n\n【非常重要：图标生成指令】\n用户请求了生成图标。你**必须**使用 Markdown 的图片语法来回复，绝对不能只输出提示词文字！\n格式必须严格如下：\n`![图标描述](https://image.pollinations.ai/prompt/flat%20vector%20app%20icon%20design%20of%20你的英文提示词?width=512&height=512&nologo=true)`\n例如：`![天气图标](https://image.pollinations.ai/prompt/flat%20vector%20app%20icon%20design%20of%20sun%20and%20cloud?width=512&height=512&nologo=true)`\n请务必确保包含 `![]()` 这些符号！\n注意：请直接输出这行 Markdown 代码，**绝对不要**把它包裹在 ``` 代码块中！';
       }
       if (content.includes('@logo')) {
-        systemAddon += '\n【系统强制指令】用户请求生成logo。你必须返回一段Markdown格式的图片代码，格式严格如下：\n![logo描述](https://image.pollinations.ai/prompt/minimalist%20vector%20logo%20design%20of%20英文提示词?width=512&height=512&nologo=true)\n请将"英文提示词"替换为具体的英文描述（单词间用%20连接）。必须包含完整的URL前缀和括号！';
+        systemAddon += '\n\n【非常重要：Logo生成指令】\n用户请求了生成logo。你**必须**使用 Markdown 的图片语法来回复，绝对不能只输出提示词文字！\n格式必须严格如下：\n`![logo描述](https://image.pollinations.ai/prompt/minimalist%20vector%20logo%20design%20of%20你的英文提示词?width=512&height=512&nologo=true)`\n例如：`![咖啡店logo](https://image.pollinations.ai/prompt/minimalist%20vector%20logo%20design%20of%20coffee%20cup?width=512&height=512&nologo=true)`\n请务必确保包含 `![]()` 这些符号！\n注意：请直接输出这行 Markdown 代码，**绝对不要**把它包裹在 ``` 代码块中！';
       }
       if (content.includes('@app界面')) {
-        systemAddon += '\n【系统强制指令】用户请求生成app界面。你必须返回一段Markdown格式的图片代码，格式严格如下：\n![界面描述](https://image.pollinations.ai/prompt/mobile%20app%20ui%20design%20of%20英文提示词?width=414&height=896&nologo=true)\n请将"英文提示词"替换为具体的英文描述（单词间用%20连接）。必须包含完整的URL前缀和括号！';
+        systemAddon += '\n\n【非常重要：App界面生成指令】\n用户请求了生成app界面。你**必须**使用 Markdown 的图片语法来回复，绝对不能只输出提示词文字！\n格式必须严格如下：\n`![界面描述](https://image.pollinations.ai/prompt/mobile%20app%20ui%20design%20of%20你的英文提示词?width=414&height=896&nologo=true)`\n例如：`![音乐播放器界面](https://image.pollinations.ai/prompt/mobile%20app%20ui%20design%20of%20music%20player?width=414&height=896&nologo=true)`\n请务必确保包含 `![]()` 这些符号！\n注意：请直接输出这行 Markdown 代码，**绝对不要**把它包裹在 ``` 代码块中！';
       }
       if (content.includes('@编程')) {
-        systemAddon += '\n【系统强制指令】用户请求编程。请直接输出高质量、带有详细注释的代码块。';
+        systemAddon += '\n\n【系统强制指令】用户请求编程。请直接输出高质量、带有详细注释的 Markdown 代码块。';
       }
       if (content.includes('@视频')) {
-        systemAddon += '\n【系统强制指令】用户请求生成视频。由于你无法直接生成视频文件，请为用户提供一个详细的视频分镜脚本（Storyboard），包括画面描述、镜头运动、旁白和音效提示。';
+        systemAddon += '\n\n【系统强制指令】用户请求生成视频。由于你无法直接生成视频文件，请为用户提供一个详细的视频分镜脚本（Storyboard），包括画面描述、镜头运动、旁白和音效提示。';
       }
       if (content.includes('@音乐')) {
-        systemAddon += '\n【系统强制指令】用户请求生成音乐。由于你无法直接生成音频文件，请为用户提供一首歌的歌词、曲风描述，或者使用简谱/和弦来表示一段旋律。';
+        systemAddon += '\n\n【系统强制指令】用户请求生成音乐。由于你无法直接生成音频文件，请为用户提供一首歌的歌词、曲风描述，或者使用简谱/和弦来表示一段旋律。';
       }
     }
 
